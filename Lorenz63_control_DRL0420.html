@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lorenz Attractor</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/onnxjs/dist/onnx.min.js"></script>
+    
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+        }
+
+        canvas {
+            display: block;
+        }
+
+        .switch {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            display: inline-block;
+            width: 60px;
+            height: 34px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .rho {
+            position: absolute;
+            bottom: 47.5px;
+            right: 17px;
+            display: inline-block;
+            width: 60px;
+            height: 34px;
+        }
+
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: 0.4s;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 26px;
+            width: 26px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: 0.4s;
+        }
+
+        input:checked + .slider {
+            background-color: #2196F3;
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
+
+        .slider.round {
+            border-radius: 34px;
+        }
+
+        .slider.round:before {
+            border-radius: 50%;
+        }
+
+        .switch-label {
+            position: absolute;
+            bottom: 25px;
+            right: 90px;
+            font-size: 18px;
+        }
+        .rho-label {
+            position: absolute;
+            bottom: 60px;
+            right: 122px;
+
+            font-size: 18px;
+        }
+        #rho-value {
+            border: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="switch-label">RL control</div>
+    <label class="switch">
+        <input type="checkbox" id="rlControl" checked>
+        <span class="slider round"></span>
+    </label>
+
+    <div class="rho-label"> ρ</div>
+    <label class="rho">
+        <input type="text" id="rho-value">
+    </label>
+
+    <script>
+        let ready = false;
+        const points = [];
+        //let x = 0.1, y = 0, z = 0;
+        let x = 7.5609202,  y=8.529202 , z=24.46669  
+        const dt = 0.01;
+        const sigma = 10, beta = 8 / 3;
+        let rho = 28;
+        let model;
+
+        let angleX = 0;
+        let angleY = 0;
+        let prevMouseX = 0;
+        let prevMouseY = 0;
+
+
+        // Define the Lorenz system equations as functions
+        function lorenzX(x, y) {
+        return sigma * (y - x);
+        }
+
+        function lorenzY(x, y, z) {
+        return x * (rho - z) - y;
+        }
+
+        function lorenzZ(x, y, z) {
+        return x * y - beta * z;
+        }
+
+        // Runge-Kutta 4th order method
+        function updateLorenzSystem(x, y, z, dt) {
+        // 1st evaluation
+        const k1x = lorenzX(x, y);
+        const k1y = lorenzY(x, y, z);
+        const k1z = lorenzZ(x, y, z);
+
+        // 2nd evaluation
+        const k2x = lorenzX(x + k1x * dt / 2, y + k1y * dt / 2);
+        const k2y = lorenzY(x + k1x * dt / 2, y + k1y * dt / 2, z + k1z * dt / 2);
+        const k2z = lorenzZ(x + k1x * dt / 2, y + k1y * dt / 2, z + k1z * dt / 2);
+
+        // 3rd evaluation
+        const k3x = lorenzX(x + k2x * dt / 2, y + k2y * dt / 2);
+        const k3y = lorenzY(x + k2x * dt / 2, y + k2y * dt / 2, z + k2z * dt / 2);
+        const k3z = lorenzZ(x + k2x * dt / 2, y + k2y * dt / 2, z + k2z * dt / 2);
+
+        // 4th evaluation
+        const k4x = lorenzX(x + k3x * dt, y + k3y * dt);
+        const k4y = lorenzY(x + k3x * dt, y + k3y * dt, z + k3z * dt);
+        const k4z = lorenzZ(x + k3x * dt, y + k3y * dt, z + k3z * dt);
+
+        // Combine evaluations to update variables
+        x += (k1x + 2 * k2x + 2 * k3x + k4x) * dt / 6;
+        y += (k1y + 2 * k2y + 2 * k3y + k4y) * dt / 6;
+        z += (k1z + 2 * k2z + 2 * k3z + k4z) * dt / 6;
+
+        return { x, y, z };
+        }
+
+
+
+        async function loadOnnxModel() {
+            model = new onnx.InferenceSession();
+            //await model.loadModel("./lorenz63_ppo_model.onnx");
+            await model.loadModel("https://cdn.jsdelivr.net/gh/lilin3336298/Lorenz_DRL@main/lorenz63_ppo_model.onnx");
+            //await model.loadModel("https://github.com/lilin3336298/Lorenz_DRL/raw/050a617c6ee308c22274cac9409b3b270febaeb3/lorenz63_ppo_model.onnx");
+            //await model.loadModel("https://www.dropbox.com/s/af3dvi0kpzl0ijy/lorenz63_ppo_model.onnx?dl=1");
+        }
+
+
+
+	     let sf = 5.0;
+        window.addEventListener("wheel", function(e) {
+          if (e.deltaY > 0)
+            sf *= 1.05;
+          else
+            sf *= 0.95;
+        });
+
+
+
+        async function setup() {
+            createCanvas(windowWidth, windowHeight, WEBGL);
+            colorMode(HSB);
+            await loadOnnxModel();
+            console.log("model: ", model)
+            ready = true;
+            frameRate(60);
+        }
+
+        async function getRhoFromModel(x, y, z, model) {
+            const observation = new Float32Array([x, y, z]);
+            const inputTensor = new onnx.Tensor(observation, "float32", [1, 3]);
+            const outputMap = await model.run([inputTensor]);
+            const outputData = outputMap.values().next().value.data;
+
+            if (outputData[0] >= outputData[1]) {
+                return 28.0;
+            } else {
+                return 28.28;
+            }
+        }
+
+        function drawTraj()
+        {
+            document.getElementById("rho-value").value = rho.toFixed(2);
+
+            console.log("before points.push:    ", rho)
+
+            //let dx = sigma * (y - x) * dt;
+            //let dy = (x * (rho - z) - y) * dt;
+            //let dz = (x * y - beta * z) * dt;
+            //x += dx;
+            //y += dy;
+            //z += dz;
+            // Use the RK4 method to update the variables x, y, and z
+            const updatedValues = updateLorenzSystem(x, y, z, dt);
+            x = updatedValues.x;
+            y = updatedValues.y;
+            z = updatedValues.z;
+
+            
+
+            points.push({position: createVector(x, y, z), rho: rho});
+
+            if (points.length > 100) { // Limit the total length to 1000
+                points.shift();
+            }
+
+            if (mouseIsPressed) {
+                angleX += (mouseX - prevMouseX) * 0.01;
+                angleY -= (mouseY - prevMouseY) * 0.01;
+            }
+
+            prevMouseX = mouseX;
+            prevMouseY = mouseY;
+
+            rotateX(angleY);
+            rotateY(angleX);
+
+            //scale(5);
+	         scale(sf);
+
+            
+            push();
+            strokeWeight(1.0);
+            stroke(color(0));
+            box(100);
+            pop();
+        
+
+            strokeWeight(1.5);
+            noFill();
+
+            beginShape();
+            for (let i = 0; i < points.length - 1; i++) {
+                const v1 = points[i].position;
+                const v2 = points[i + 1].position;
+                const currentRho = points[i].rho;
+
+                if (currentRho === 28.28) { // Space key is pressed
+                    stroke(color(0, 100, 100)); // Red
+                } else {
+                    stroke(color(0)); // Black
+                }
+
+                line(v1.x, v1.y, v1.z, v2.x, v2.y, v2.z);
+            }
+            endShape();
+
+            // Update the webpage title with the real-time rho value
+            document.title = "Lorenz Attractor";// (rho: " + rho.toFixed(2) + ")";
+        }
+
+        function draw() {
+            if (!ready)
+              return
+
+            background(255);
+
+            const rlControl = document.getElementById("rlControl").checked;
+            //const drawBox   = document.getElementById("drawBox").checked;
+            //rlControl = true
+
+            if (rlControl) {
+                //rho = getRhoFromModel(x, y, z, model);
+		          getRhoFromModel(x, y, z, model).then(value => {
+		                  rho = value;
+		                  console.log("after getRhoFromModel: ", rho)
+
+                        drawTraj();
+                });
+            } else {
+                if (keyIsDown(16) || touches.length > 0) { // Space key is pressed or screen is touched
+                    rho = 28.28;
+                } else {
+                    rho = 28.0;
+                }
+                drawTraj();
+            }
+        }
+    </script>
+</body>
+</html>
