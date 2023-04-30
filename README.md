@@ -1,14 +1,7 @@
 
-## Suppressing chaos by intermittent chaos enhancing
+This [webpage](https://prediction.riken.jp/lorenz63/LorenzControl29.html) serves as a supplementary material for our submitted paper, "Chaos Suppression through Intermittent Chaos Enhancement." The goal is to control the chaotic Lorenz system by temporarily increasing its level of chaos, a counter-intuitive task with many real-world implications.
 
-This interactive webpage allows you to control the Lorenz 63 chaotic system by intermittently enhancing the level of chaos, a counter-intuitive approach. 
+Control can be achieved either manually by applying perturbations to the system or automatically through a pre-trained neural network. Toggle between these modes using the switcher in the bottom right corner of the webpage. In Manual Control mode, apply perturbations to the system (i.e., temporarily increase the value of ρ) by pressing the Shift key. In DRL Control mode, a pre-trained neural network governs perturbation to the Lorenz system. You can observe how the neural network achieves control and then attempt to apply this knowledge in Manual mode. Once mastered, you'll find the control surprisingly simple (yet the underlying principle is very interesting).
 
-There are two modes available: Deep Reinforcement Learning (DRL) Control Mode and Manual Control Mode. You can switch between the modes using the switcher located in the bottom right corner of the webpage.
-### a) DRL Control Mode
-In DRL control mode, the Lorenz system is controlled by a neural network trained with deep reinforcement learning. This provides an automated approach to controlling the chaotic system. 
-### b) Manual Control Mode
-In manual control mode, you can take control of the Lorenz system yourself. To temporarily increase the chaoticity of the Lorenz system (ρ = 28.0 -> ρ = 29.0), press the "Shift" key. Note that there is a minor difference from the paper: the perturbation of ρ is from 28 to 29, rather than from 28 to 28.28. This change was made to make manual control easier.
+Additional information and the underlying principles will be available upon publication of the paper. Finally, we’d like to note a minor deviation from the paper's content: the perturbation of ρ has been adjusted to 28 → 29 (instead of 28 → 28.28), in order to facilitate easier manual control.
 
-To get started, simply [click here](https://prediction.riken.jp/lorenz63/LorenzControl29.html) to launch the application and choose your preferred control mode.
-
-This application is a supplementary material for our submitted paper. More information will be provided along with the publication of the paper. 
